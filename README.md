@@ -1,10 +1,10 @@
 # TrustVault
 
-Secure document-sharing web application with end-to-end security best practices, append-only audit logs, and granular access control.
+Secure document-sharing web application with end-to-end security best practices, session authentication, role-based access control, and granular permissions.
 
 ## Tech Stack
-- **Backend**: Python 3.13, Django 5+, Django REST Framework, PostgreSQL
-- **Frontend**: React, Vite, TypeScript, Lucide Icons
+- **Backend**: Python 3.13, Django 5+, Django REST Framework, PostgreSQL / SQLite
+- **Frontend**: React, Vite, TypeScript, React Router
 
 ## Getting Started
 
@@ -24,3 +24,16 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Phase 2 API Endpoints
+- `POST /api/auth/login/` - Authenticates user and establishes secure session cookie
+- `POST /api/auth/logout/` - Clears session
+- `GET /api/auth/me/` - Returns current authenticated user profile and role
+- `PATCH /api/auth/me/` - Updates user profile (role escalation prevented)
+
+## Running Automated Tests
+```bash
+cd backend
+python manage.py test accounts
+```
+
