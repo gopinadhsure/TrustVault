@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -24,13 +25,41 @@ load_dotenv(BASE_DIR / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key')
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'True').strip().lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-trustvault-dev-key-change-in-production'
+    else:
+        raise ImproperlyConfigured("SECRET_KEY environment variable must be set in production (when DEBUG=False).")
+elif not DEBUG and (SECRET_KEY.startswith('django-insecure-') or SECRET_KEY in (
+    'django-insecure-default-key',
+    'django-insecure-trustvault-dev-key-change-in-production'
+)):
+    raise ImproperlyConfigured(
+        "Production cannot run with an insecure default SECRET_KEY. Please provide a secure SECRET_KEY in your environment variables."
+    )
+
+# Parse ALLOWED_HOSTS from comma-separated environment variable, stripping whitespace
+raw_allowed_hosts = os.getenv('ALLOWED_HOSTS', '')
+if raw_allowed_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
+else:
+    ALLOWED_HOSTS = []
+
+# Include Render external hostname if provided by Render environment
+render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+if render_external_hostname and render_external_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_external_hostname)
+
+# Include localhost defaults for local development
+if DEBUG:
+    for local_host in ['127.0.0.1', 'localhost', 'testserver']:
+        if local_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(local_host)
 
 
 # Application definition
@@ -73,7 +102,8 @@ REST_FRAMEWORK = {
     ],
 }
 
-CORS_ALLOWED_ORIGINS = [
+# Base localhost origins for development
+LOCAL_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:4173',
@@ -81,19 +111,41 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
+
+CORS_ALLOWED_ORIGINS = list(LOCAL_ORIGINS)
+CSRF_TRUSTED_ORIGINS = list(LOCAL_ORIGINS)
+
+# Add production FRONTEND_URL if configured, stripping whitespace and trailing slashes
+# Note: Wildcards ('*') are strictly disallowed to maintain granular access control
+frontend_url_env = os.getenv('FRONTEND_URL', '').strip()
+if frontend_url_env:
+    for raw_url in frontend_url_env.split(','):
+        normalized_url = raw_url.strip().rstrip('/')
+        if normalized_url:
+            if normalized_url not in CORS_ALLOWED_ORIGINS:
+                CORS_ALLOWED_ORIGINS.append(normalized_url)
+            if normalized_url not in CSRF_TRUSTED_ORIGINS:
+                CSRF_TRUSTED_ORIGINS.append(normalized_url)
+
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:4173',
-    'http://127.0.0.1:4173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-]
-
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE = 'Lax'
+# Cookie security settings for session authentication:
+# In cross-origin production deployments (where frontend and backend run on different domains over HTTPS),
+# cookies must have Secure=True and SameSite='None' for the browser to send session and CSRF cookies on fetch requests.
+# Note: Modern browsers and privacy features (e.g., Safari ITP, third-party cookie blocking, and incognito mode)
+# may restrict third-party cookies across different domains.
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SAMESITE = 'None'
+    # Behind Render's reverse proxy terminating TLS, trust the X-Forwarded-Proto header for HTTPS detection
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
 
 
 TEMPLATES = [

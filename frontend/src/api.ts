@@ -14,11 +14,15 @@ function getCookie(name: string): string | null {
     return cookieValue;
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
+const rawBase = import.meta.env.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : 'http://localhost:8000/api';
+const API_BASE = rawBase.replace(/\/+$/, '');
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(options.headers as Record<string, string> || {}),
     };
 

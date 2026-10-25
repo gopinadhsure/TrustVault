@@ -1,6 +1,7 @@
 import mimetypes
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import SuspiciousOperation, ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404
@@ -16,6 +17,7 @@ from .models import AuditLog, Document, DocumentAccess
 from .permissions import IsDocumentOwnerOrAdmin, IsDocumentPermissionManager
 from .audit import record_audit_event
 from accounts.permissions import IsAdminRole
+from .parsers import document_upload_parsers
 from .serializers import (
     AuditLogSerializer,
     DocumentAccessSerializer,
@@ -36,6 +38,7 @@ class AuditLogPagination(pagination.PageNumberPagination):
 class DocumentListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = DocumentSerializer
+    parser_classes = document_upload_parsers
 
     def get_queryset(self):
         user = self.request.user
@@ -76,6 +79,16 @@ class DocumentListCreateView(generics.ListCreateAPIView):
                     details={'reason': 'upload_rejected'},
                 )
             return response
+        except (DjangoValidationError, SuspiciousOperation) as exc:
+            record_audit_event(
+                request=request,
+                action='document_upload',
+                outcome='failure',
+                target_model='document',
+                details={'reason': 'upload_rejected', 'error': str(exc)},
+            )
+            error_msg = exc.messages if hasattr(exc, 'messages') else [str(exc)]
+            return Response({'file': error_msg}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
             record_audit_event(
                 request=request,
@@ -161,28 +174,32 @@ class DocumentDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.is_valid(raise_exception=True)
         changed_fields = list(serializer.validated_data.keys())
         replacing_file = 'file' in serializer.validated_data
-        with transaction.atomic():
-            document = serializer.save()
-            if replacing_file:
-                record_audit_event(
-                    request=request,
-                    action='document_file_replaced',
-                    target_model='document',
-                    target_id=document.pk,
-                    target_label=document.title,
-                    details={'file_name': document.original_filename, 'file_type': document.file_type},
-                )
-            metadata_fields = [field for field in changed_fields if field != 'file']
-            if metadata_fields:
-                record_audit_event(
-                    request=request,
-                    action='document_metadata_updated',
-                    target_model='document',
-                    target_id=document.pk,
-                    target_label=document.title,
-                    details={'title': document.title, 'changed_fields': metadata_fields},
-                )
-        return Response(DocumentSerializer(document).data)
+        try:
+            with transaction.atomic():
+                document = serializer.save()
+                if replacing_file:
+                    record_audit_event(
+                        request=request,
+                        action='document_file_replaced',
+                        target_model='document',
+                        target_id=document.pk,
+                        target_label=document.title,
+                        details={'file_name': document.original_filename, 'file_type': document.file_type},
+                    )
+                metadata_fields = [field for field in changed_fields if field != 'file']
+                if metadata_fields:
+                    record_audit_event(
+                        request=request,
+                        action='document_metadata_updated',
+                        target_model='document',
+                        target_id=document.pk,
+                        target_label=document.title,
+                        details={'title': document.title, 'changed_fields': metadata_fields},
+                    )
+            return Response(DocumentSerializer(document).data)
+        except (DjangoValidationError, SuspiciousOperation) as exc:
+            error_msg = exc.messages if hasattr(exc, 'messages') else [str(exc)]
+            return Response({'file': error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
         document = self.get_object()

@@ -1,10 +1,12 @@
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import CustomUser
-from documents.models import AuditLog, Document, DocumentAccess
+from documents.models import AuditLog, Document, DocumentAccess, PrivateDocumentStorage, document_upload_path
+from documents.serializers import DocumentUploadSerializer
 
 
 class DocumentAPITests(APITestCase):
@@ -54,13 +56,57 @@ class DocumentAPITests(APITestCase):
         self.assertTrue(AuditLog.objects.filter(action='document_upload', outcome='failure').exists())
 
     def test_upload_path_traversal_is_rejected(self):
-        uploaded = SimpleUploadedFile('../../etc/passwd.txt', b'content', 'text/plain')
+        def upload_with_original_name(filename):
+            uploaded = SimpleUploadedFile('safe.txt', b'content', 'text/plain')
+            # Preserve the raw name to exercise validation before Django sanitizes it.
+            uploaded._name = filename
+            return uploaded
+
+        # 1. API endpoint rejects path traversal / invalid filenames like '..'
+        uploaded_dotdot = upload_with_original_name('..')
         response = self.client.post(
             reverse('document-list-create'),
-            {'title': 'bad', 'file': uploaded},
+            {'title': 'bad', 'file': uploaded_dotdot},
             format='multipart',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 2. Serializer validation rejects path traversal filenames directly
+        for bad_name in ['../../etc/passwd.txt', r'..\..\windows\win.ini', '/etc/passwd.txt', 'sub/dir.txt']:
+            bad_upload = upload_with_original_name(bad_name)
+            serializer = DocumentUploadSerializer(data={'title': 'bad', 'file': bad_upload})
+            self.assertFalse(serializer.is_valid(), f"Expected {bad_name} to be invalid in serializer")
+            self.assertIn('file', serializer.errors)
+
+        # 3. Model upload path and storage validate against path traversal
+        with self.assertRaises(ValidationError):
+            document_upload_path(Document(uploaded_by=self.owner), '../../etc/passwd.txt')
+        with self.assertRaises(ValidationError):
+            document_upload_path(Document(uploaded_by=self.owner), r'..\..\win.ini')
+        with self.assertRaises(ValidationError):
+            document_upload_path(Document(uploaded_by=self.owner), '/absolute/path.txt')
+
+        storage = PrivateDocumentStorage()
+        with self.assertRaises(ValidationError):
+            storage.get_valid_name('../../etc/passwd.txt')
+        with self.assertRaises(ValidationError):
+            storage.get_valid_name(r'..\..\windows\win.ini')
+        with self.assertRaises(ValidationError):
+            storage.get_available_name('private_documents/../etc/passwd.txt')
+        with self.assertRaises(ValidationError):
+            storage.get_available_name('/absolute/path.txt')
+
+    def test_upload_duplicate_filenames(self):
+        resp1 = self._upload(filename='report.pdf', title='Report 1', content_type='application/pdf')
+        resp2 = self._upload(filename='report.pdf', title='Report 2', content_type='application/pdf')
+        self.assertEqual(resp1.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp2.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Document.objects.count(), 2)
+        doc1 = Document.objects.get(pk=resp1.data['id'])
+        doc2 = Document.objects.get(pk=resp2.data['id'])
+        self.assertNotEqual(doc1.file.name, doc2.file.name)
+        self.assertEqual(doc1.original_filename, 'report.pdf')
+        self.assertEqual(doc2.original_filename, 'report.pdf')
 
     def test_shared_user_can_list_document(self):
         upload_response = self._upload(title='Shared Doc')

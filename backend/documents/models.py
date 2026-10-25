@@ -9,12 +9,15 @@ from django.db import models
 
 
 def _contains_path_traversal(filename):
-    normalized = str(filename or '').replace('\\', '/')
-    if not normalized or normalized in {'.', '..'}:
+    raw = str(filename or '')
+    if not raw or '\x00' in raw:
+        return True
+    normalized = raw.replace('\\', '/')
+    if normalized in {'.', '..'}:
         return True
     if normalized.startswith('/') or normalized.startswith('..'):
         return True
-    if '/' in normalized:
+    if '/' in normalized or '\\' in raw:
         return True
     if any(part == '..' for part in PurePosixPath(normalized).parts):
         return True
@@ -23,21 +26,26 @@ def _contains_path_traversal(filename):
 
 class PrivateDocumentStorage(FileSystemStorage):
     def get_valid_name(self, name):
-        candidate = name.replace('\\', '/')
-        if _contains_path_traversal(candidate):
+        raw = str(name or '')
+        if _contains_path_traversal(raw):
             raise ValidationError('Path traversal is not allowed in file names.')
-        return os.path.basename(candidate)
+        clean = super().get_valid_name(raw)
+        if not clean or clean in {'.', '..'}:
+            raise ValidationError('Invalid file name.')
+        return clean
 
     def get_available_name(self, name, max_length=None):
-        clean_name = self.get_valid_name(name)
-        return super().get_available_name(clean_name, max_length=max_length)
+        normalized = str(name or '').replace('\\', '/')
+        if any(part == '..' for part in PurePosixPath(normalized).parts) or normalized.startswith('/'):
+            raise ValidationError('Path traversal is not allowed in file names.')
+        return super().get_available_name(normalized, max_length=max_length)
 
 
 def document_upload_path(instance, filename):
-    normalized = str(filename or '').replace('\\', '/')
-    if _contains_path_traversal(normalized):
+    raw = str(filename or '')
+    if _contains_path_traversal(raw):
         raise ValidationError('Path traversal is not allowed in file names.')
-    safe_name = os.path.basename(normalized)
+    safe_name = os.path.basename(raw.replace('\\', '/'))
     if not safe_name or safe_name in {'.', '..'}:
         raise ValidationError('Invalid file name.')
     return f'private_documents/{instance.uploaded_by_id}/{safe_name}'

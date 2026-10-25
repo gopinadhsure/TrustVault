@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { type FormEvent, useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { PageShell } from '../components/PageShell';
 import { activityService } from '../services/activityService';
