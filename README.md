@@ -34,6 +34,10 @@ npm run dev
 ## Running Automated Tests
 ```bash
 cd backend
-python manage.py test accounts
+python manage.py test accounts documents
 ```
+
+## Audit Activity
+- Administrators can retrieve audit events at `GET /api/audit-logs/`; the endpoint supports `page`, `page_size` (maximum 100), `action`, `outcome`, `actor` (username substring), and `target_id` filters.
+- Audit events are application-level records and are not tamper-proof. See [THREATS.md](THREATS.md) for the integrity limitations and independent controls needed for stronger guarantees.
 

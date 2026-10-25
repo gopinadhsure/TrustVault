@@ -26,3 +26,13 @@ This document outlines authentication-related security threats, attack vectors, 
   - Backend role enforcement via custom DRF permission classes (`IsAdminRole`, `IsOwnerOrAdmin`).
   - Serializers (`UserUpdateSerializer`) explicitly mark the `role` field as `read_only_fields`, preventing users from changing their own role even if they send a patch request with `{ "role": "ADMIN" }`.
   - Automated tests verify that privilege escalation attempts fail and 403 Forbidden is returned.
+
+## 5. Audit Event Confidentiality and Integrity
+- **Threat**: Users attempt to read or alter administrative activity records, or event details accidentally retain credentials or document contents.
+- **Mitigations**:
+  - The audit API is administrator-only; its list endpoint is read-only and has server-side pagination and filters.
+  - The Django admin audit view is read-only. Event details are constructed through a safe-key allowlist and do not include request bodies, passwords, tokens, secret keys, or document contents.
+  - Document and permission mutations record their event in the same database transaction where practical. Failed/denied operations record a minimal reason and target identifier when available.
+- **Limitations**:
+  - These are application-level records in the application database. They are not tamper-proof: a database administrator, compromised application credentials, direct database access, or privileged code can alter or remove them.
+  - Stronger integrity requires independent controls such as a separately administered append-only log service, immutable/WORM storage, restricted database roles, backups, and monitoring of audit-log access. No such independent protection is configured here.

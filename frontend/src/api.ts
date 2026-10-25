@@ -14,7 +14,7 @@ function getCookie(name: string): string | null {
     return cookieValue;
 }
 
-const API_BASE = 'http://localhost:8000/api/auth';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const headers: Record<string, string> = {
@@ -31,7 +31,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
         }
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    // Ensure endpoint starts with / if not present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    const response = await fetch(`${API_BASE}${cleanEndpoint}`, {
         ...options,
         headers,
         credentials: 'include', // Send session cookies

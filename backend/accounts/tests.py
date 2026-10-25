@@ -2,6 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from accounts.models import CustomUser
+from documents.models import AuditLog
 
 class AuthenticationAndRolesTests(APITestCase):
 
@@ -39,6 +40,8 @@ class AuthenticationAndRolesTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['username'], 'adminuser')
         self.assertEqual(response.data['role'], 'ADMIN')
+        event = AuditLog.objects.get(action='authentication_login', outcome='success')
+        self.assertEqual(event.user, self.admin_user)
 
     def test_login_wrong_password(self):
         """Test login failure with incorrect password."""
@@ -47,6 +50,9 @@ class AuthenticationAndRolesTests(APITestCase):
             'password': 'WrongPassword123!'
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        event = AuditLog.objects.get(action='authentication_login', outcome='failure')
+        self.assertEqual(event.user, self.admin_user)
+        self.assertNotIn('WrongPassword123!', str(event.details))
 
     def test_login_missing_fields(self):
         """Test login failure with missing username/password."""
@@ -73,6 +79,7 @@ class AuthenticationAndRolesTests(APITestCase):
         self.client.login(username='vieweruser', password='SecurePassword123!')
         response = self.client.post(self.logout_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(AuditLog.objects.filter(action='authentication_logout', outcome='success').exists())
         
         # Verify /me/ is no longer accessible
         response_me = self.client.get(self.me_url)

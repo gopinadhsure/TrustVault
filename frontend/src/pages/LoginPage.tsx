@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
@@ -19,7 +19,7 @@ export const LoginPage: React.FC = () => {
         setLoading(false);
 
         if (result.success) {
-            navigate('/profile');
+            navigate('/dashboard');
         } else {
             setError(result.error || 'Login failed.');
         }
@@ -32,22 +32,11 @@ export const LoginPage: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            color: '#f8fafc',
             padding: '1rem'
         }}>
-            <div style={{
-                background: 'rgba(30, 41, 59, 0.7)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                padding: '2.5rem',
-                borderRadius: '1rem',
-                width: '100%',
-                maxWidth: '420px',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
-            }}>
+            <div className="tv-card" style={{ width: '100%', maxWidth: '420px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '0.5r em', color: '#38bdf8' }}>TrustVault</h1>
+                    <h1 style={{ fontSize: '1.875rem', fontWeight: 700, marginBottom: '0.5rem', color: '#38bdf8', margin: 0 }}>TrustVault</h1>
                     <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Secure Document Management System</p>
                 </div>
 
@@ -68,49 +57,25 @@ export const LoginPage: React.FC = () => {
 
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '1.25rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#cbd5e1' }}>
-                            Username
-                        </label>
+                        <label className="tv-label">Username</label>
                         <input
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '0.5rem',
-                                border: '1px solid #334155',
-                                background: '#0f172a',
-                                color: '#fff',
-                                fontSize: '1rem',
-                                outline: 'none',
-                                boxSizing: 'border-box'
-                            }}
+                            className="tv-input"
                             placeholder="Enter your username"
                         />
                     </div>
 
                     <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#cbd5e1' }}>
-                            Password
-                        </label>
+                        <label className="tv-label">Password</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '0.5rem',
-                                border: '1px solid #334155',
-                                background: '#0f172a',
-                                color: '#fff',
-                                fontSize: '1rem',
-                                outline: 'none',
-                                boxSizing: 'border-box'
-                            }}
+                            className="tv-input"
                             placeholder="••••••••"
                         />
                     </div>
@@ -118,26 +83,15 @@ export const LoginPage: React.FC = () => {
                     <button
                         type="submit"
                         disabled={loading}
-                        style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            borderRadius: '0.5rem',
-                            border: 'none',
-                            background: '#0284c7',
-                            color: '#fff',
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.7 : 1,
-                            transition: 'background 0.2s'
-                        }}
+                        className="tv-btn tv-btn-primary"
+                        style={{ width: '100%', opacity: loading ? 0.7 : 1 }}
                     >
                         {loading ? 'Authenticating...' : 'Sign In'}
                     </button>
                 </form>
 
-                <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
-                    Protected by Django Session Auth & CSRF Protection
+                <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: '#94a3b8' }}>
+                    Don't have an account? <Link to="/register" style={{ color: '#38bdf8', textDecoration: 'none' }}>Register</Link>
                 </div>
             </div>
         </div>

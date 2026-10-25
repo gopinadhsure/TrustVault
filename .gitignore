@@ -26,3 +26,10 @@ dist-ssr/
 Thumbs.db
 .vscode/
 .idea/
+
+# Private uploaded documents
+backend/private_media/
+
+# Python cache files
+__pycache__/
+*.py[cod]

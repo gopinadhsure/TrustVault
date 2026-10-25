@@ -15,9 +15,34 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
+
+from accounts.views import AdminOnlyView, LoginView, LogoutView, MeView
+from documents.views import (
+    AuditLogListView,
+    DocumentAccessDetailView,
+    DocumentAccessListCreateView,
+    DocumentDetailView,
+    DocumentDownloadView,
+    DocumentListCreateView,
+    DocumentSearchView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('accounts.urls')),
+    path('api/login/', LoginView.as_view(), name='api-login'),
+    path('api/logout/', LogoutView.as_view(), name='api-logout'),
+    path('api/me/', MeView.as_view(), name='api-me'),
+    path('api/admin-only/', AdminOnlyView.as_view(), name='api-admin-only'),
+    path('api/auth/login/', LoginView.as_view(), name='api-auth-login'),
+    path('api/auth/logout/', LogoutView.as_view(), name='api-auth-logout'),
+    path('api/auth/me/', MeView.as_view(), name='api-auth-me'),
+    path('api/auth/admin-only/', AdminOnlyView.as_view(), name='api-auth-admin-only'),
+    path('api/documents/', DocumentListCreateView.as_view(), name='document-list-create'),
+    path('api/documents/search/', DocumentSearchView.as_view(), name='document-search'),
+    path('api/documents/<int:pk>/', DocumentDetailView.as_view(), name='document-detail'),
+    path('api/documents/<int:pk>/download/', DocumentDownloadView.as_view(), name='document-download'),
+    path('api/grants/', DocumentAccessListCreateView.as_view(), name='document-grants-list-create'),
+    path('api/grants/<int:pk>/', DocumentAccessDetailView.as_view(), name='document-grant-detail'),
+    path('api/audit-logs/', AuditLogListView.as_view(), name='audit-log-list'),
 ]

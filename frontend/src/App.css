@@ -182,3 +182,124 @@
     border-right-color: var(--border);
   }
 }
+
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.audit-filters label {
+  display: grid;
+  gap: 6px;
+  color: var(--tv-text-muted);
+  font-size: 0.8rem;
+}
+
+.audit-filters input,
+.audit-filters select {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 10px;
+  color: var(--tv-text);
+  background: #111827;
+  border: 1px solid #475569;
+  border-radius: 4px;
+}
+
+.audit-filter-actions,
+.audit-pagination,
+.audit-pagination > div,
+.audit-retry-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audit-retry-row {
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.audit-table-wrap {
+  padding: 0;
+  overflow-x: auto;
+  border-radius: 6px;
+}
+
+.audit-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+
+.audit-table th {
+  color: var(--tv-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.audit-table td {
+  color: var(--tv-text);
+  font-size: 0.86rem;
+}
+
+.audit-table td small {
+  display: block;
+  margin-top: 4px;
+  color: var(--tv-text-muted);
+}
+
+.audit-outcome {
+  display: inline-block;
+  min-width: 74px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  text-align: center;
+  text-transform: capitalize;
+  font-size: 0.75rem;
+}
+
+.audit-outcome-success { color: #bbf7d0; background: rgba(34, 197, 94, 0.16); }
+.audit-outcome-denied { color: #fecaca; background: rgba(239, 68, 68, 0.16); }
+.audit-outcome-failure { color: #fde68a; background: rgba(234, 179, 8, 0.16); }
+
+.audit-pagination {
+  justify-content: space-between;
+  margin-top: 14px;
+  color: var(--tv-text-muted);
+  font-size: 0.85rem;
+}
+
+.audit-pagination .tv-btn {
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.audit-pagination .tv-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 900px) {
+  .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .audit-filters { grid-template-columns: 1fr; }
+  .audit-filter-actions { justify-content: flex-start; }
+  .audit-pagination { align-items: flex-start; flex-direction: column; }
+  .audit-pagination > div { width: 100%; justify-content: space-between; }
+}
